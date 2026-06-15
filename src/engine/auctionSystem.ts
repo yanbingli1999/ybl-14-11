@@ -186,15 +186,28 @@ export function generateBuyers(
 
     const carriage = train.carriages.find(c => c.candyType === candyType);
     const loaded = carriage?.currentLoad || 0;
+
+    if (loaded <= 0) {
+      continue;
+    }
+
     const maxBuyable = Math.min(
       loaded,
-      preferenceType === 'surplus' ? info.surplusAmount : Math.max(2, Math.floor(loaded * 0.5) + 1)
+      preferenceType === 'surplus'
+        ? Math.max(1, info.surplusAmount)
+        : Math.max(1, Math.floor(loaded * 0.7) + 1)
     );
 
-    const maxQuantity = Math.max(2, Math.min(
-      maxBuyable,
-      5 + Math.floor(Math.random() * 8)
-    ));
+    if (maxBuyable <= 0) {
+      continue;
+    }
+
+    const desiredQty = 2 + Math.floor(Math.random() * 8);
+    const maxQuantity = Math.max(1, Math.min(maxBuyable, desiredQty));
+
+    if (maxQuantity < 1) {
+      continue;
+    }
 
     const isSealed = preferenceType === 'origin';
     const maxPatience = GAME_CONFIG.AUCTION_MAX_PATIENCE;
@@ -332,22 +345,49 @@ export function skipAuctionRound(state: AuctionState): AuctionState {
 
 export function getSaleImpactOnOrder(
   order: StationOrder | null,
+  train: Train,
   candyType: CandyType,
   quantity: number
-): { impactType: 'relieve_mismatch' | 'cause_shortage' | 'neutral'; description: string } {
+): { impactType: 'relieve_mismatch' | 'cause_shortage' | 'neutral' | 'mixed'; description: string } {
   if (!order) {
     return { impactType: 'neutral', description: '不影响主订单' };
   }
 
   const orderItem = order.items.find(i => i.candyType === candyType);
+  const carriage = train.carriages.find(c => c.candyType === candyType);
+  const currentLoad = carriage?.currentLoad || 0;
+  const afterLoad = Math.max(0, currentLoad - quantity);
 
   if (!orderItem) {
-    return { impactType: 'relieve_mismatch', description: '✓ 卖出富余糖果，缓解错装问题' };
+    return {
+      impactType: 'relieve_mismatch',
+      description: `✓ 主订单不需要 ${CANDY_CONFIG[candyType].name}，卖出 ${quantity} 个可减少错装`,
+    };
+  }
+
+  const required = orderItem.quantity;
+
+  if (currentLoad <= required) {
+    return {
+      impactType: 'cause_shortage',
+      description: `⚠ 当前库存 ${currentLoad} ≤ 订单需求 ${required}，卖出 ${quantity} 个后剩 ${afterLoad} 个，将造成缺货！`,
+    };
+  }
+
+  const surplus = currentLoad - required;
+  const deficitSale = Math.max(0, quantity - surplus);
+  const surplusSale = Math.min(quantity, surplus);
+
+  if (afterLoad >= required) {
+    return {
+      impactType: 'relieve_mismatch',
+      description: `✓ 当前富余 ${surplus} 个，卖出 ${quantity} 个后仍剩 ${afterLoad} 个（≥${required}），完全不影响主订单`,
+    };
   }
 
   return {
-    impactType: 'cause_shortage',
-    description: `⚠ 主订单需要 ${orderItem.quantity} 个，卖出后可能导致缺货！`,
+    impactType: 'mixed',
+    description: `⚖ 富余 ${surplus} 个，卖出 ${quantity} 个将消耗全部富余+${deficitSale}个库存，剩 ${afterLoad}/${required}（差 ${required - afterLoad} 个）`,
   };
 }
 

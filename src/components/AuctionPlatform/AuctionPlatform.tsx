@@ -24,7 +24,7 @@ function BuyerCard({ buyer, onSell }: BuyerCardProps) {
   const currentLoad = getCandyLoad(train, buyer.candyType);
   const maxSellable = Math.min(currentLoad, buyer.maxQuantity);
 
-  const impact = getSaleImpactOnOrder(currentOrder, buyer.candyType, quantity);
+  const impact = getSaleImpactOnOrder(currentOrder, train, buyer.candyType, quantity);
 
   const scarcityInfo = calculateScarcity(train, currentOrder);
   const scarcity = scarcityInfo.find(s => s.candyType === buyer.candyType)?.scarcity || 0.5;
@@ -210,6 +210,8 @@ function BuyerCard({ buyer, onSell }: BuyerCardProps) {
               ? 'bg-green-50 text-green-700'
               : impact.impactType === 'cause_shortage'
               ? 'bg-orange-50 text-orange-700'
+              : impact.impactType === 'mixed'
+              ? 'bg-yellow-50 text-yellow-800'
               : 'bg-gray-50 text-gray-600'
           }`}
         >
@@ -217,6 +219,8 @@ function BuyerCard({ buyer, onSell }: BuyerCardProps) {
             <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
           ) : impact.impactType === 'cause_shortage' ? (
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          ) : impact.impactType === 'mixed' ? (
+            <TrendingUp className="w-4 h-4 flex-shrink-0 mt-0.5" />
           ) : null}
           <span>{impact.description}</span>
         </div>

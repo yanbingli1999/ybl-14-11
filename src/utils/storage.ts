@@ -11,6 +11,7 @@ import {
   StationOrder,
   Position,
   DispatchResult,
+  AuctionState,
 } from '@/types';
 import { STATIONS, INITIAL_TRAIN, GAME_CONFIG } from '@/data/config';
 import { createInitialBoard } from '@/engine/matchEngine';
@@ -34,6 +35,7 @@ export interface PersistedGameState {
   maxCombo: number;
   gamePhase: 'playing' | 'auction' | 'dispatching' | 'result' | 'gameover';
   dispatchResult: DispatchResult | null;
+  auction: AuctionState | null;
   timestamp: number;
 }
 
@@ -72,6 +74,7 @@ export function loadGameState(profile: PlayerProfile): PersistedGameState | null
     maxCombo: 0,
     gamePhase: 'playing',
     dispatchResult: null,
+    auction: null,
     timestamp: Date.now(),
   };
 }

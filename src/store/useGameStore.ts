@@ -98,12 +98,12 @@ const useGameStore = create<GameStore>((set, get) => {
     currentOrder: persisted?.currentOrder,
     currentStationId: persisted?.currentStationId || initialProfile.unlockedStations[0] || 'candy-town',
     isAnimating: false,
-    gamePhase: persisted?.gamePhase === 'result' ? 'playing' : (persisted?.gamePhase === 'auction' ? 'playing' : (persisted?.gamePhase || 'playing')),
+    gamePhase: persisted?.gamePhase === 'result' ? 'playing' : (persisted?.gamePhase || 'playing'),
     dispatchResult: null,
     profile: initialProfile,
     stats: initialStats,
     showStats: false,
-    auction: null,
+    auction: persisted?.gamePhase === 'auction' ? (persisted?.auction || null) : null,
 
     persist: () => {
       const s = get();
@@ -116,8 +116,9 @@ const useGameStore = create<GameStore>((set, get) => {
         moves: s.moves,
         combo: s.combo,
         maxCombo: s.maxCombo,
-        gamePhase: s.gamePhase === 'auction' ? 'playing' : s.gamePhase,
+        gamePhase: s.gamePhase,
         dispatchResult: s.dispatchResult,
+        auction: s.auction,
       });
     },
 
