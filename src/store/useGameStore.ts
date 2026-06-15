@@ -8,6 +8,7 @@ import {
   DispatchResult,
   PlayerProfile,
   AllStats,
+  AuctionState,
 } from '@/types';
 import {
   createInitialBoard,
@@ -28,6 +29,12 @@ import {
 import { loadCandiesToTrain, clearTrain } from '@/engine/loadingSystem';
 import { calculateDispatchResult } from '@/engine/dispatchSystem';
 import { generateOrder } from '@/engine/contractSystem';
+import {
+  initAuctionState,
+  executeSale,
+  skipAuctionRound,
+  applySaleToTrain,
+} from '@/engine/auctionSystem';
 import {
   loadProfile,
   saveProfile,
@@ -51,16 +58,22 @@ interface GameStore {
   currentOrder: StationOrder | null;
   currentStationId: string;
   isAnimating: boolean;
-  gamePhase: 'playing' | 'dispatching' | 'result' | 'gameover';
+  gamePhase: 'playing' | 'auction' | 'dispatching' | 'result' | 'gameover';
   dispatchResult: DispatchResult | null;
   profile: PlayerProfile;
   stats: AllStats;
   showStats: boolean;
+  auction: AuctionState | null;
 
   selectCandy: (pos: Position) => void;
   processSwap: (pos1: Position, pos2: Position) => void;
   processMatches: (forcedMatches?: MatchResult[]) => Promise<void>;
   dispatchTrain: () => void;
+  startAuction: () => void;
+  sellCandyToBuyer: (buyerId: string, quantity: number, pricePerUnit: number) => boolean;
+  skipAuction: () => void;
+  confirmDispatch: () => void;
+  cancelAuction: () => void;
   nextOrder: () => void;
   resetGame: () => void;
   setShowStats: (show: boolean) => void;
@@ -85,11 +98,12 @@ const useGameStore = create<GameStore>((set, get) => {
     currentOrder: persisted?.currentOrder,
     currentStationId: persisted?.currentStationId || initialProfile.unlockedStations[0] || 'candy-town',
     isAnimating: false,
-    gamePhase: persisted?.gamePhase === 'result' ? 'playing' : (persisted?.gamePhase || 'playing'),
+    gamePhase: persisted?.gamePhase === 'result' ? 'playing' : (persisted?.gamePhase === 'auction' ? 'playing' : (persisted?.gamePhase || 'playing')),
     dispatchResult: null,
     profile: initialProfile,
     stats: initialStats,
     showStats: false,
+    auction: null,
 
     persist: () => {
       const s = get();
@@ -102,7 +116,7 @@ const useGameStore = create<GameStore>((set, get) => {
         moves: s.moves,
         combo: s.combo,
         maxCombo: s.maxCombo,
-        gamePhase: s.gamePhase,
+        gamePhase: s.gamePhase === 'auction' ? 'playing' : s.gamePhase,
         dispatchResult: s.dispatchResult,
       });
     },
@@ -264,9 +278,68 @@ const useGameStore = create<GameStore>((set, get) => {
     },
 
     dispatchTrain: () => {
-      const { train, currentOrder, profile, gamePhase, moves, maxCombo } = get();
+      const { train, gamePhase, currentOrder, moves } = get();
 
-      if (gamePhase !== 'playing' || !currentOrder) return;
+      if (gamePhase !== 'playing') return;
+
+      const totalLoad = train.carriages.reduce((sum, c) => sum + c.currentLoad, 0);
+      if (totalLoad <= 0) return;
+
+      if (currentOrder || moves <= 0) {
+        get().startAuction();
+      }
+    },
+
+    startAuction: () => {
+      const { train, currentOrder, profile, currentStationId } = get();
+      const auctionState = initAuctionState(train, currentOrder, profile.reputation, currentStationId);
+      set({ gamePhase: 'auction', auction: auctionState });
+    },
+
+    sellCandyToBuyer: (buyerId: string, quantity: number, pricePerUnit: number): boolean => {
+      const { auction, train, profile } = get();
+      if (!auction) return false;
+
+      const result = executeSale(auction, buyerId, quantity, pricePerUnit);
+
+      if (!result.success || !result.sale) {
+        return false;
+      }
+
+      const newTrain = applySaleToTrain(train, result.sale);
+      const newProfile: PlayerProfile = {
+        ...profile,
+        coins: profile.coins + result.sale.totalPrice,
+      };
+
+      saveProfile(newProfile);
+
+      set({
+        auction: result.updatedState,
+        train: newTrain,
+        profile: newProfile,
+      });
+
+      get().persist();
+      return true;
+    },
+
+    skipAuction: () => {
+      const { auction } = get();
+      if (!auction) return;
+
+      const updatedAuction = skipAuctionRound(auction);
+      set({ auction: updatedAuction });
+    },
+
+    confirmDispatch: () => {
+      const { train, currentOrder, profile, moves, maxCombo } = get();
+
+      if (!currentOrder) {
+        set({ gamePhase: 'gameover' });
+        clearGameState();
+        return;
+      }
 
       const result = calculateDispatchResult(train, currentOrder);
 
@@ -304,9 +377,15 @@ const useGameStore = create<GameStore>((set, get) => {
         dispatchResult: result,
         profile: newProfile,
         stats: loadStats(),
+        auction: null,
       });
 
       clearGameState();
+    },
+
+    cancelAuction: () => {
+      set({ gamePhase: 'playing', auction: null });
+      get().persist();
     },
 
     nextOrder: () => {
@@ -348,6 +427,7 @@ const useGameStore = create<GameStore>((set, get) => {
         dispatchResult: null,
         profile,
         stats: loadStats(),
+        auction: null,
       });
 
       clearGameState();

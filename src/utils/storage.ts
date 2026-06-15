@@ -32,7 +32,7 @@ export interface PersistedGameState {
   moves: number;
   combo: number;
   maxCombo: number;
-  gamePhase: 'playing' | 'dispatching' | 'result' | 'gameover';
+  gamePhase: 'playing' | 'auction' | 'dispatching' | 'result' | 'gameover';
   dispatchResult: DispatchResult | null;
   timestamp: number;
 }

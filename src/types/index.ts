@@ -79,6 +79,45 @@ export interface PlayerProfile {
   unlockedStations: string[];
 }
 
+export type GamePhase = 'playing' | 'auction' | 'dispatching' | 'result' | 'gameover';
+
+export type BuyerPreferenceType = 'surplus' | 'origin' | 'any';
+
+export interface AuctionBuyer {
+  id: string;
+  name: string;
+  avatar: string;
+  candyType: CandyType;
+  originStationId?: string;
+  originStationName?: string;
+  preferenceType: BuyerPreferenceType;
+  maxQuantity: number;
+  currentBid: number;
+  minPricePerUnit: number;
+  maxPricePerUnit: number;
+  patience: number;
+  maxPatience: number;
+  isUrgent: boolean;
+  description: string;
+}
+
+export interface AuctionState {
+  buyers: AuctionBuyer[];
+  completedSales: AuctionSale[];
+  totalAuctionCoins: number;
+  auctionRound: number;
+}
+
+export interface AuctionSale {
+  buyerId: string;
+  buyerName: string;
+  candyType: CandyType;
+  quantity: number;
+  pricePerUnit: number;
+  totalPrice: number;
+  timestamp: number;
+}
+
 export interface GameState {
   board: (Candy | null)[][];
   selectedCandy: Position | null;
@@ -90,8 +129,9 @@ export interface GameState {
   currentOrder: StationOrder | null;
   currentStationId: string;
   isAnimating: boolean;
-  gamePhase: 'playing' | 'dispatching' | 'result' | 'gameover';
+  gamePhase: GamePhase;
   dispatchResult: DispatchResult | null;
+  auction: AuctionState | null;
 }
 
 export interface DispatchResult {

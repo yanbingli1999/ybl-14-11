@@ -41,12 +41,12 @@ export default function TrainPanel() {
             : 'bg-gray-300 cursor-not-allowed'
           }`}
       >
-        🚂 发车！
+        🎪 前往拍卖月台 → 🚂 发车！
       </button>
 
       {moves <= 0 && gamePhase === 'playing' && (
         <p className="text-center text-red-500 text-sm mt-2 font-medium">
-          步数已用完，请发车结束本局
+          步数已用完，请前往拍卖月台后发车
         </p>
       )}
     </div>

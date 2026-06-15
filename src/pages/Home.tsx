@@ -5,6 +5,7 @@ import StationOrderPanel from '@/components/Station/StationOrderPanel';
 import StatsPanel from '@/components/StatsPanel/StatsPanel';
 import DispatchResultModal from '@/components/DispatchResultModal/DispatchResultModal';
 import GameOverModal from '@/components/GameOverModal/GameOverModal';
+import AuctionPlatform from '@/components/AuctionPlatform/AuctionPlatform';
 import { getStationProgress } from '@/engine/contractSystem';
 import useGameStore from '@/store/useGameStore';
 import { Train, Candy } from 'lucide-react';
@@ -83,6 +84,9 @@ export default function Home() {
             <li>• 点击两个相邻的糖果进行交换，三个或更多相同糖果连成一线即可消除</li>
             <li>• 消除的糖果会自动装入对应的列车车厢</li>
             <li>• 观察车站订单需求，决定何时发车</li>
+            <li>• 🎪 <b>发车前会进入糖果拍卖月台</b>：临时买家会竞价购买糖果</li>
+            <li>• 拍卖价格受稀缺度、车站声望、封签状态和急单耐心影响</li>
+            <li>• 卖出富余糖果可缓解错装，但可能造成主订单缺货，需谨慎权衡</li>
             <li>• 匹配度高获得奖励，错装会被扣除罚金</li>
             <li>• 完成订单获得信誉，解锁更多车站</li>
             <li>• 4连消生成炸弹糖（范围消除），5连消生成彩虹糖（消除同色）</li>
@@ -97,6 +101,7 @@ export default function Home() {
       <StatsPanel />
       <DispatchResultModal />
       <GameOverModal />
+      <AuctionPlatform />
     </div>
   );
 }
